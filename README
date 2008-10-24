@@ -1,0 +1,93 @@
+NAME
+    DBIx::Class::DeleteAction - Define delete triggers
+
+SYNOPSIS
+     package Your::Schema::Class;
+     use strict;
+     use warnings;
+     
+ use base 'DBIx::Class';
+     
+ __PACKAGE__->load_components(
+       "DeleteAction",
+       "PK",
+       "Core",
+     );
+     
+ __PACKAGE__->table("actor");
+     __PACKAGE__->add_columns(qw/name/);
+     
+ __PACKAGE__->has_many(
+        'actorroles' => 'MyDB::Schema::ActorRole',
+        'actor',
+        { 'foreign.actor' => 'self.id' },
+        { delete_action => 'null' }
+     );
+
+DESCRIPTION
+    With this DBIx::Class component you can specify actions that should be
+    triggered on a row delete. A delete action is specified by adding the
+    'delete_acction' key to the optional attribute HASH reference when
+    specifing a new relation (see DBIx::Class::Relationship).
+
+    The following hash values are supported:
+
+    *   null
+
+        Set all columns in related rows pointing to this record to NULL.
+
+    *   delete
+
+        Delete all related records.
+
+    *   deny
+
+        Deny deletion if this record is being referenced from other rows.
+
+    *   CODE reference
+
+        Execute custom code on delete. The current "DBIx::Class::Row" object
+        and the name of the relation are passed to the code reference.
+
+    *   STRING
+
+        Execute a method with the given name. The method will be called on
+        the current "DBIx::Class::Row" object and will get the name of the
+        relation.
+
+CAVEATS
+    Note that the "delete" method in "DBIx::Class::ResultSet" will not run
+    DeleteAction triggers. See "delete_all" if you need triggers to run.
+
+    Any database-level cascade, restrict or trigger will take precedence
+    over a DBIx-Class-DeleteAction based trigger.
+
+SUPPORT
+    Please report any bugs or feature requests to
+    "bug-dbix-class-deleteaction@rt.cpan.org", or through the web interface
+    at
+    <http://rt.cpan.org/Public/Bug/Report.html?Queue=DBIx::Class::DeleteActi
+    on>. I will be notified, and then you'll automatically be notified of
+    progress on your report as I make changes.
+
+AUTHOR
+        Maroš Kollár
+        CPAN ID: MAROS
+        maros [at] k-1.com
+        L<http://www.revdev.at>
+
+ACKNOWLEDGEMENTS
+    This module was written for Revdev <http://www.revdev.at>, a nice litte
+    software company I run with Koki and Domm
+    (<http://search.cpan.org/~domm/>).
+
+COPYRIGHT
+    DBIx::Class::DeleteAction is Copyright (c) 2008 Maroš Kollár -
+    <http://www.revdev.at>
+
+    This program is free software; you can redistribute it and/or modify it
+    under the same terms as Perl itself.
+
+    The full text of the license can be found in the LICENSE file included
+    with this module.
+
