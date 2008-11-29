@@ -15,6 +15,6 @@ build_requires  'DBD::SQLite'           => 0;
 build_requires  'Test::Pod'             => 0;
 build_requires  'Test::Pod::Coverage'   => 0;
 build_requires  'Class::C3'             => 0;
-
+build_requires  'Test::Exception'       => 0;
 
 WriteAll;

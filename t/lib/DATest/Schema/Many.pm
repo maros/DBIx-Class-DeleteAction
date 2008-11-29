@@ -4,7 +4,7 @@ package # hide from PAUSE
 use base 'DBIx::Class';
     
 __PACKAGE__->load_components(qw/DeleteAction PK::Auto Core/);
-__PACKAGE__->table("main");
+__PACKAGE__->table("many");
 __PACKAGE__->add_columns(
   "id",
   {

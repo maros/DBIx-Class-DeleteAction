@@ -10,7 +10,7 @@ CREATE TABLE main (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     might INTEGER,
-    belongs INTEGER NOT NULL
+    belongs INTEGER
 );
 
 CREATE TABLE belongs (

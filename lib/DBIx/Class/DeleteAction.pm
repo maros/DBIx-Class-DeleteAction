@@ -76,12 +76,29 @@ C<DBIx::Class::Row> object and will be passed the name of the relation.
 
 =cut
 
+sub _delete_identifier {
+    my $self = shift;
+    my @primary = $self->primary_columns;
+    return ref($self) . join '|',map { $self->get_column($_) } @primary;
+}
+
 sub delete {
-    my ($self, @rest) = @_;
+    my ($self, $seen) = @_;
+
+    $seen ||= [];
+    
+    
+    # Build data identifier
+    my $identifier = $self->_delete_identifier;
+    
+    # Check for identifier
+    return if (grep { $identifier eq $_ } @$seen);
+    
+    push @$seen,$identifier;
 
     # Ignore Class deletes. DBIx::Class::Relationship::CascadeActions
     # does too so why should I bother?
-    return $self->next::method(@rest) unless ref $self;
+    return $self->next::method() unless ref $self;
     
     # Check if item is in the database before we proceed
     $self->throw_exception( "Not in database" ) unless $self->in_storage;
@@ -103,8 +120,22 @@ sub delete {
         # Get delete action parameter value
         my $delete_action = $relationship_info->{attrs}{delete_action};
 
+        # This would be much nicer with 5.10s given/when/default
+        
+        my $related;
+        # Only get relations with data
+        if ($relationship_info->{attrs}{accessor} eq 'multi') {
+            $related = $self->search_related($relationship);
+            next unless $related->count;
+        } else {
+            # We might speed this up by analyzing $relationship_info->{cond}
+            $related = $self->$relationship;
+            next unless $related;
+        }
+        
         # Action: NULL
         if ($delete_action eq 'null') {
+            warn('SET NULL '.$self.'->'.$relationship_info->{source});
             if ($relationship_info->{attrs}{accessor} eq 'multi') {
                 my $update = {};
                 foreach my $key (keys %{$relationship_info->{cond}} ) {
@@ -112,30 +143,52 @@ sub delete {
                         $key =~ /^foreign\.(.+)$/;
                     $update->{$1} = undef;    
                 }
-                $self->search_related($relationship)->udpate($update);
+                $related->update($update);
             } else {
+#                foreach my $column (keys %{$relationship_info->{cond}}) {
+#                    next unless $column =~ /^foreign\.(.+)$/;
+#                    $column = $1;
+#                    warn('SET COLUMN '.$1);
+#                    $related->set_column($1,undef);
+#                }
+#                $related->update();
                 warn("Delete action 'null' does not work with ".$relationship_info->{attrs}{accessor}." relations");
             }
         # Action: DELETE
         } elsif ($delete_action eq 'delete') {
-            if ($relationship_info->{attrs}{accessor} eq 'single') {
-                warn 'SINGLE'.$self->$relationship;
-                $self->$relationship->delete;
+            warn('DELETE '.$self.'->'.$relationship_info->{source});
+            if ($related->isa('DBIx::Class::ResultSet')) {
+                while (my $item = $related->next) {
+                    $item->delete($seen);
+                }
             } else {
-                warn 'MULTI'.$self->$relationship;
-                $self->delete_related($relationship);
+                $related->delete($seen);
             }
         # Action: DENY
         } elsif ($delete_action eq 'deny') {
-            if ($self->delete_related($relationship)->count) {
-                $self->throw_exception("Can't delete the object because it is still referenced from other records");
-            } 
+            warn('DENY '.$self.'->'.$relationship_info->{source}.$relationship_info->{attrs}{accessor});
+            if ($related->isa('DBIx::Class::ResultSet')) {
+                while (my $item = $related->next) {
+                    my $compare_identifier = $item->_delete_identifier;
+                    next if grep {$compare_identifier eq $_} @$seen;
+                    $self->throw_exception("Can't delete the object because it is still referenced from other records");
+                }
+            } else {
+                my $compare_identifier = $related->_delete_identifier;
+                unless (grep {$compare_identifier eq $_} @$seen) {
+                    $self->throw_exception("Can't delete the object because it is still referenced from other records");
+                }
+            }
+            
+           
         # Action: CODE
         } elsif (ref $delete_action eq 'CODE') {
-            $delete_action->($self,$relationship,@rest);
+            warn('CODE '.$self.'->'.$relationship_info->{source});
+            $delete_action->($self,$relationship,$related,$seen);
         # Action: METHOD    
         } elsif ($self->can($delete_action)) {
-            $self->$delete_action($relationship,@rest);
+            warn('METHOD '.$self.'->'.$relationship_info->{source});
+            $self->$delete_action($relationship,$related,$seen);
         # Fallback
         } else {
             $self->throw_exception("Invalid delete action '$delete_action'")
@@ -143,7 +196,7 @@ sub delete {
     }
 
     # Run delete
-    $self->next::method(@rest);
+    $self->next::method();
 }
 
 

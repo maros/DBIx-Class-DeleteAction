@@ -24,7 +24,7 @@ __PACKAGE__->add_columns(
   "belongs",
   {
     data_type => "integer",
-    is_nullable => 0,
+    is_nullable => 1,
   },
 );
 __PACKAGE__->set_primary_key('id');   
@@ -51,6 +51,7 @@ __PACKAGE__->might_have(
     { 
         delete_action   => sub {
             my ($self,$relation,@rest) = @_;
+            die('DELETE might_have')
         },
     }
 );

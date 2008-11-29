@@ -4,7 +4,7 @@ package # hide from PAUSE
 use base 'DBIx::Class';
     
 __PACKAGE__->load_components(qw/DeleteAction PK::Auto Core/);
-__PACKAGE__->table("main");
+__PACKAGE__->table("belongs");
 __PACKAGE__->add_columns(
   "id",
   {
@@ -28,16 +28,13 @@ __PACKAGE__->has_many(
     'main' => 'DATest::Schema::Main', 
     { 'foreign.belongs' => 'self.id' },
     { 
-        delete_action   => 'null',
+        delete_action   => 'delete',
     }
 );
 
-__PACKAGE__->belongs_to(
+__PACKAGE__->has_one(
     'other' => 'DATest::Schema::Other', 
     { 'foreign.id' => 'self.other' },
-    { 
-        delete_action   => 'null',
-    }
 );
 
 1;
