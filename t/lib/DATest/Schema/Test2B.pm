@@ -1,0 +1,53 @@
+package # hide from PAUSE 
+    DATest::Schema::Test2B;
+   
+use base 'DBIx::Class';
+    
+__PACKAGE__->load_components(qw/DeleteAction PK::Auto Core/);
+__PACKAGE__->table("test2_b");
+__PACKAGE__->add_columns(
+  "id",
+  {
+    data_type => "integer",
+    is_nullable => 0,
+  },
+  "name",
+  {
+    data_type => "varchar",
+    is_nullable => 1,
+  },
+  "c",
+  {
+    data_type => "integer",
+    is_nullable => 1,
+  },
+);
+__PACKAGE__->set_primary_key('id');   
+
+__PACKAGE__->has_many(
+    'as' => 'DATest::Schema::Test2A', 
+    { 'foreign.b'  => 'self.id' },
+    { 
+        delete_action   => 'null',
+    }
+);
+
+__PACKAGE__->might_have(
+    'c' => 'DATest::Schema::Test2C', 
+    { 'foreign.id'  => 'self.c' },
+    { 
+        delete_action   => 'testme',
+    }
+);
+
+sub testme {
+    my ($self,$relationship,$related,$seen,@extra) = @_;
+    if (scalar @extra) {
+        die('TESTME:'.join ',',@extra);
+    } else {
+        warn('TESTME');
+    }
+    
+}
+   
+1;

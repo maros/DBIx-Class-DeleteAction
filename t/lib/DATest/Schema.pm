@@ -3,6 +3,6 @@ package # hide from PAUSE
     
 use base qw/DBIx::Class::Schema/;
 
-__PACKAGE__->load_classes(qw/Main Many Belongs Might Other/);
+__PACKAGE__->load_classes(qw/Test1A Test1B Test2A Test2B Test2C/);
 
 1;
