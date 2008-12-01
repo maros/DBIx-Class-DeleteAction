@@ -6,7 +6,6 @@ use Class::C3;
 use strict;
 use Test::More;
 use Test::Exception;
-use Test::NoWarnings;
 use warnings;
 no warnings qw(once);
 
@@ -19,7 +18,7 @@ BEGIN {
     eval "use DBD::SQLite";
     plan $@
         ? ( skip_all => 'needs DBD::SQLite for testing' )
-        : ( tests => 8 );
+        : ( tests => 7 );
 }
 
 use lib qw(t/lib);

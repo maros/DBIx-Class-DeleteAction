@@ -7,13 +7,12 @@ use strict;
 use Test::More;
 use warnings;
 no warnings qw(once);
-use Test::NoWarnings;
 
 BEGIN {
     eval "use DBD::SQLite";
     plan $@
         ? ( skip_all => 'needs DBD::SQLite for testing' )
-        : ( tests => 3 );
+        : ( tests => 2 );
 }
 
 use lib qw(t/lib);

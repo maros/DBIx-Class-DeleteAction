@@ -6,7 +6,9 @@ use warnings;
 
 use base qw(DBIx::Class);
 
-our $VERSION = '1.00';
+use version;
+use vars qw($VERSION);
+$VERSION = version->new("1.00");
 
 =encoding utf8
 
