@@ -28,7 +28,7 @@ __PACKAGE__->belongs_to(
     'b' => 'DATest::Schema::Test2B', 
     { 'foreign.id'  => 'self.b' },
     { 
-        delete_action   => 'delete',
+        delete_action   => 'cascade',
     }
 );
    

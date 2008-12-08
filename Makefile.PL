@@ -10,6 +10,7 @@ perl_version    '5.006';
 
 # Specific dependencies
 requires        'DBIx::Class'           => 0;
+requires        'SQL::Abstract'         => 0;
 requires        'version'               => 0;
 
 build_requires  'DBD::SQLite'           => 0;

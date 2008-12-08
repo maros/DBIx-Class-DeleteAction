@@ -1,4 +1,11 @@
 Revision history for Perl module DBIx::Class::DeleteAction
 
+1.01 Fri Dec 5 2008
+    - Added additional delete type 'ignore'
+    - Additional tests
+    - Test coverage to 87.8%
+    - Added dep to SQL::Abstract; Hopefully this stops some cpantesters
+      from failing
+
 1.00 Wed Oct 15 2008
     - original version

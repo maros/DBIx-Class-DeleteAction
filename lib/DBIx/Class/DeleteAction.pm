@@ -8,7 +8,7 @@ use base qw(DBIx::Class);
 
 use version;
 use vars qw($VERSION);
-$VERSION = version->new("1.00");
+$VERSION = version->new("1.01");
 
 =encoding utf8
 
@@ -109,6 +109,10 @@ and the name of the relation are passed to the code reference.
 Execute a method with the given name. The method will be called on the current
 C<DBIx::Class::Row> object and will be passed the name of the relation.
 
+=item * ignore
+
+Do nothing
+
 =back
 
 =head2 Custom delete handlers
@@ -167,7 +171,7 @@ block.
 sub _delete_action_identifier {
     my $self = shift;
     my @primary = $self->primary_columns;
-    return ref($self) . join '|',map { $self->get_column($_) } @primary;
+    return ref($self) . join '|',map { $self->get_column($_) || '' } @primary;
 }
 
 sub delete {
@@ -177,6 +181,10 @@ sub delete {
         unshift @other,$seen;
         undef $seen;
     }
+    
+    # Ignore Class deletes. DBIx::Class::Relationship::CascadeActions
+    # does too so why should I bother?
+    return $self->next::method($seen,@other) unless ref $self && $self->isa('DBIx::Class::Row');
     
     my $debug = $self->result_source->storage->debug();
     
@@ -190,21 +198,17 @@ sub delete {
     
     push @$seen,$identifier;
 
-    # Ignore Class deletes. DBIx::Class::Relationship::CascadeActions
-    # does too so why should I bother?
-    return $self->next::method($seen,@other) unless ref $self && $self->isa('DBIx::Class::Row');
-    
     # Check if item is in the database before we proceed
     $self->throw_exception( "Not in database" ) unless $self->in_storage;
     
     my $source = $self->result_source;
 
     # Loop all relations
-    foreach my $relationship ($source->relationships) {
+    RELATIONSHIP: foreach my $relationship ($source->relationships) {
         my $relationship_info = $source->relationship_info($relationship);
          
         # Ignore relation with no 'delete_action' key set
-        next 
+        next RELATIONSHIP
             unless $relationship_info->{attrs}{delete_action};
          
         # Unset DBIC key cascade_delete attribute, so that we do not
@@ -214,28 +218,31 @@ sub delete {
         # Get delete action parameter value
         my $delete_action = $relationship_info->{attrs}{delete_action};
 
-        # This would be much nicer with 5.10s given/when/default
+        next RELATIONSHIP 
+            if $delete_action eq 'ignore';
         
         my $related;
         # Only get relations with data
         if ($relationship_info->{attrs}{accessor} eq 'multi') {
             $related = $self->search_related($relationship);
-            next unless $related->count;
+            next RELATIONSHIP
+                unless $related->count;
         } else {
             # We might speed this up by analyzing $relationship_info->{cond}
             $related = $self->$relationship;
-            next unless $related;
+            next RELATIONSHIP
+                unless $related;
         }
         
-                
+        # This would be much nicer with 5.10s given/when/default        
         # Action: NULL
         if ($delete_action eq 'null') {
             warn('SET NULL '.$self.'->'.$relationship) if $debug;
             if ($relationship_info->{attrs}{accessor} eq 'multi') {
                 my $update = {};
                 foreach my $key (keys %{$relationship_info->{cond}} ) {
-                    next unless
-                        $key =~ /^foreign\.(.+)$/;
+                    next RELATIONSHIP
+                        unless $key =~ /^foreign\.(.+)$/;
                     $update->{$1} = undef;    
                 }
                 $related->update($update);
@@ -273,7 +280,7 @@ sub delete {
             $delete_action->($self,$relationship,$related,$seen,@other);
         # Action: METHOD    
         } elsif ($self->can($delete_action)) {
-            warn('METHOD '.$self.'->'.$relationship) if $debug;
+            warn('METHOD '.$self.'->'.$relationship.':'.$delete_action) if $debug;
             $self->$delete_action($relationship,$related,$seen,@other);
         # Fallback
         } else {

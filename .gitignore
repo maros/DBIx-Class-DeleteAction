@@ -11,3 +11,4 @@ MANIFEST.bak
 Makefile.old
 cover_db/
 DBIx-Class-DeleteAction-*
+t/var/datest.db
