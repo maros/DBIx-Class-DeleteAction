@@ -58,4 +58,19 @@ CREATE TABLE test4_a (
     a integer
 );
 
+DROP TABLE IF EXISTS test5_a;
+DROP TABLE IF EXISTS test5_b;
+
+CREATE TABLE test5_a (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL
+);
+
+CREATE TABLE test5_b (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    a1 integer,
+    a2 integer
+);
+
 COMMIT;

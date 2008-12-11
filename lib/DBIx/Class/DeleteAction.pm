@@ -8,7 +8,7 @@ use base qw(DBIx::Class);
 
 use version;
 use vars qw($VERSION);
-$VERSION = version->new("1.01");
+$VERSION = version->new("1.02");
 
 =encoding utf8
 
@@ -93,7 +93,15 @@ on 'has_many' relationships.
 
 =item * delete OR cascade
 
-Delete all related records.
+Delete all related records one by one. This can trigger further delete 
+actions.
+
+=item * deleteall
+
+Delete all related records in a single step. This does not trigger further 
+delete actions.
+
+Only works on 'has_many' relationships.
 
 =item * deny
 
@@ -238,7 +246,7 @@ sub delete {
         # Action: NULL
         if ($delete_action eq 'null') {
             warn('SET NULL '.$self.'->'.$relationship) if $debug;
-            if ($relationship_info->{attrs}{accessor} eq 'multi') {
+            if ($related->isa('DBIx::Class::ResultSet')) {
                 my $update = {};
                 foreach my $key (keys %{$relationship_info->{cond}} ) {
                     next RELATIONSHIP
@@ -258,6 +266,14 @@ sub delete {
                 }
             } else {
                 $related->delete($seen,@other);
+            }
+        # Action: ALLDELETE
+        } elsif ($delete_action eq 'deleteall') {
+            warn('ALLDELETE '.$self.'->'.$relationship) if $debug;
+            if ($related->isa('DBIx::Class::ResultSet')) {
+                $related->delete();
+            } else {
+                warn("Delete action 'null' does not work with ".$relationship_info->{attrs}{accessor}." relations");
             }
         # Action: DENY
         } elsif ($delete_action eq 'deny') {
