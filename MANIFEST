@@ -29,8 +29,11 @@ t/lib/DATest/Schema/Test2C.pm
 t/lib/DATest/Schema/Test2D.pm
 t/lib/DATest/Schema/Test3A.pm
 t/lib/DATest/Schema/Test4A.pm
+t/lib/DATest/Schema/Test5A.pm
+t/lib/DATest/Schema/Test5B.pm
 t/test1.t
 t/test2.t
 t/test3.t
+t/test4.t
 t/var/datest.sql
 Todo
