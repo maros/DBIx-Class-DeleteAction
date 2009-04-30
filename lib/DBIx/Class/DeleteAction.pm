@@ -8,7 +8,7 @@ use base qw(DBIx::Class);
 
 use version;
 use vars qw($VERSION);
-$VERSION = version->new("1.02");
+$VERSION = version->new("1.03");
 
 =encoding utf8
 
@@ -28,7 +28,8 @@ DBIx::Class::DeleteAction - Define delete triggers
  __PACKAGE__->load_components("DeleteAction","PK","Core");
  
  __PACKAGE__->table("actor");
- __PACKAGE__->add_columns(qw/name/);
+ __PACKAGE__->add_columns(qw/id name/);
+ __PACKAGE__->set_primary_key('id');
  
  __PACKAGE__->has_many(
     'actorroles' => 'MyDB::Schema::ActorRole',
@@ -46,14 +47,18 @@ DBIx::Class::DeleteAction - Define delete triggers
  __PACKAGE__->load_components("DeleteAction","PK","Core");
  
  __PACKAGE__->table("actor_role");
- __PACKAGE__->add_columns(qw/name actor production/);
+ __PACKAGE__->add_columns(qw/id name actor production/);
+ __PACKAGE__->set_primary_key('id');
  
  __PACKAGE__->belongs_to(
     'actor' => 'MyDB::Schema::Actor',
     { 'foreign.id' => 'self.actor' },
-    { delete_action => sub {
-        # Do something special
-    } }
+    { delete_action => 
+        sub {
+            my ($self,$params) = @_;
+            # Do something special
+        } 
+    }
  );
  
  __PACKAGE__->belongs_to(
@@ -82,7 +87,7 @@ triggered on a row delete. A delete action is specified by adding the
 'delete_action' key to the optional attribute HASH reference when specifing
 a new relation (see L<DBIx::Class::Relationship>).
 
-The following hash values are supported:
+The following delete actions are supported:
 
 =over
 
@@ -134,30 +139,35 @@ method will be called with the following parameters:
 
 The L<DBIx::Class::Row> object the delete action has been called upon.
 
-=item * Relationship name
+=item * HASHREF
+
+A hashref of named parameters
+
+=over
+
+=item * relationship
 
 The name of the relationship that is currently being processed.
 
-=item * Related object(s)
+=item * related
 
 The related object(s) for the given object and relationship.
 
 Depending on the type of the relationship this can either be a 
 L<DBIx::Class::Row> or a L<DBIx::Class::ResultSet> object.
 
-=item * Seen object(s)
+=item * seen 
 
 An arraryref with object identifiers which have already been processed.
 If you want to call another L<delete> method from your code you MUST
 pass on this variable so that we can ensure that each object/row is handled
 only once. 
 
-The helper method C<_delete_action_identifier> returns the identification
-string fot the given object.
-
 =item * Extra values
 
-An array of optional extra values that have been passed to L<delete> 
+Any other values that you pass to 'delete'.
+
+=back
 
 =back
 
@@ -165,14 +175,17 @@ An array of optional extra values that have been passed to L<delete>
 
  $object->delete();
  OR
- $object->delete($seen_arrayref);
- OR
- $object->delete($seen_arrayref,@extra_values);
+ $object->delete(HASHREF);
 
-This method overdrives the L<DBIx::Class::Row> delete method.
+This method overdrives the L<DBIx::Class::Row> delete method. You can
+add arbitrary data as HASHREF which will be passed to your custom
+delete handles. 
 
 Make sure that you ALWAYS call C<delete> always from within a TRANSACTION 
-block.
+block. 
+
+If you call C<delete> from within a custom delete handler always pass on
+the C<seen> parameter.
 
 =cut
 
@@ -183,31 +196,29 @@ sub _delete_action_identifier {
 }
 
 sub delete {
-    my ($self, $seen, @other) = @_;
+    my ($self,$params) = @_;
 
-    if (defined $seen && ref $seen ne 'ARRAY') {
-        unshift @other,$seen;
-        undef $seen;
-    }
+    $params ||= {};
+    $params->{seen} ||= [];
     
     # Ignore Class deletes. DBIx::Class::Relationship::CascadeActions
     # does too so why should I bother?
-    return $self->next::method($seen,@other) unless ref $self && $self->isa('DBIx::Class::Row');
-    
+    return $self->next::method($params) 
+        unless ref $self && $self->isa('DBIx::Class::Row');
+
     my $debug = $self->result_source->storage->debug();
     
-    $seen ||= [];
-
-    # Build data identifier
     my $identifier = $self->_delete_action_identifier;
     
-    # Check for identifier
-    return if (grep { $identifier eq $_ } @$seen);
     
-    push @$seen,$identifier;
+    # Check for identifier
+    return if (grep { $identifier eq $_ } @{$params->{seen}});
+    
+    push @{$params->{seen}},$identifier;
 
     # Check if item is in the database before we proceed
-    $self->throw_exception( "Not in database" ) unless $self->in_storage;
+    $self->throw_exception( "Not in database" ) 
+        unless $self->in_storage;
     
     my $source = $self->result_source;
 
@@ -236,16 +247,33 @@ sub delete {
             next RELATIONSHIP
                 unless $related->count;
         } else {
-            # We might speed this up by analyzing $relationship_info->{cond}
+            CONDITIONS:
+            foreach my $condition (values %{$relationship_info->{cond}}) {
+                if ($condition =~ m/^self\.(.+)/) {
+                    my $column = $1;
+                    next RELATIONSHIP
+                        unless $self->get_column($column);
+#                    
+#                    unless ($self->has_column_loaded($column)) {
+#                        warn("LOAD $column");
+#                        $self = $self->get_from_storage();
+#                        next RELATIONSHIP
+#                            unless $self->get_column($column);
+#                        last CONDITIONS;
+#                    }
+                }
+                
+            }
+
             $related = $self->$relationship;
             next RELATIONSHIP
                 unless $related;
         }
-        
+
         # This would be much nicer with 5.10s given/when/default        
         # Action: NULL
         if ($delete_action eq 'null') {
-            warn('SET NULL '.$self.'->'.$relationship) if $debug;
+            warn('DeleteAction: NULL '.$self.'->'.$relationship) if $debug;
             if ($related->isa('DBIx::Class::ResultSet')) {
                 my $update = {};
                 foreach my $key (keys %{$relationship_info->{cond}} ) {
@@ -259,17 +287,17 @@ sub delete {
             }
         # Action: DELETE
         } elsif ($delete_action eq 'delete' || $delete_action eq 'cascade') {
-            warn('DELETE '.$self.'->'.$relationship) if $debug;
+            warn('DeleteAction: DELETE '.$self.'->'.$relationship) if $debug;
             if ($related->isa('DBIx::Class::ResultSet')) {
                 while (my $item = $related->next) {
-                    $item->delete($seen,@other);
+                    $item->delete($params);
                 }
             } else {
-                $related->delete($seen,@other);
+                $related->delete($params);
             }
-        # Action: ALLDELETE
+        # Action: DELETEALL
         } elsif ($delete_action eq 'deleteall') {
-            warn('ALLDELETE '.$self.'->'.$relationship) if $debug;
+            warn('DeleteAction: DELETEALL '.$self.'->'.$relationship) if $debug;
             if ($related->isa('DBIx::Class::ResultSet')) {
                 $related->delete();
             } else {
@@ -277,35 +305,45 @@ sub delete {
             }
         # Action: DENY
         } elsif ($delete_action eq 'deny') {
-            warn('DENY '.$self.'->'.$relationship) if $debug;
+            warn('DeleteAction: DENY '.$self.'->'.$relationship) if $debug;
             if ($related->isa('DBIx::Class::ResultSet')) {
                 while (my $item = $related->next) {
                     my $compare_identifier = $item->_delete_action_identifier;
-                    next if grep {$compare_identifier eq $_} @$seen;
+                    next if grep {$compare_identifier eq $_} @{$params->{seen}};
                     $self->throw_exception("Can't delete the object because it is still referenced from other records");
                 }
             } else {
                 my $compare_identifier = $related->_delete_action_identifier;
-                unless (grep {$compare_identifier eq $_} @$seen) {
+                unless (grep {$compare_identifier eq $_} @{$params->{seen}}) {
                     $self->throw_exception("Can't delete the object because it is still referenced from other records");
                 }
             }
         # Action: CODE
         } elsif (ref $delete_action eq 'CODE') {
-            warn('CODE '.$self.'->'.$relationship) if $debug;
-            $delete_action->($self,$relationship,$related,$seen,@other);
+            warn('DeleteAction: CODE '.$self.'->'.$relationship) if $debug;
+            $delete_action->($self,{
+                relationship    => $relationship,
+                related         => $related,
+                %{$params},
+            });
         # Action: METHOD    
         } elsif ($self->can($delete_action)) {
-            warn('METHOD '.$self.'->'.$relationship.':'.$delete_action) if $debug;
-            $self->$delete_action($relationship,$related,$seen,@other);
+            warn('DeleteAction: METHOD '.$self.'->'.$relationship.':'.$delete_action) if $debug;
+            $self->$delete_action({
+                relationship    => $relationship,
+                related         => $related,
+                %{$params},
+            });
         # Fallback
         } else {
             $self->throw_exception("Invalid delete action '$delete_action'")
         }
     }
 
+    warn('DeleteAction: NEXT DELETE '.$self) if $debug;
+
     # Run delete
-    $self->next::method($seen,@other);
+    return $self->next::method($params);
 }
 
 

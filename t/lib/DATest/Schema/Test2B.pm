@@ -41,9 +41,9 @@ __PACKAGE__->might_have(
 );
 
 sub testme {
-    my ($self,$relationship,$related,$seen,@extra) = @_;
-    if (scalar @extra) {
-        die('TESTME:'.join ',',@extra);
+    my ($self,$params) = @_;
+    if (defined $params->{extra}) {
+        die('TESTME:'.$params->{extra});
     } else {
         warn('TESTME');
     }

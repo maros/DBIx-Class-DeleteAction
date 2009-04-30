@@ -51,6 +51,7 @@ my $b1 = $schema->resultset('Test2B')->create({
 });
 my $b2 = $schema->resultset('Test2B')->create({
     name    => 'B.2',
+    c       => $c3,
 });
 my $b3 = $schema->resultset('Test2B')->create({
     name    => 'B.3',
@@ -93,9 +94,9 @@ is($schema->resultset('Test2A')->search({b => \'IS NULL'})->count,2);
 
 throws_ok {
     $schema->txn_do(sub {
-        $b2->delete('hare','bunny','rabbit');
+        $b2->delete({extra => 'bunny'});
     })
-} qr/TESTME:hare,bunny,rabbit/, 'call method';
+} qr/TESTME:bunny/, 'call method';
 
 warnings_like {
     $b2->delete();
