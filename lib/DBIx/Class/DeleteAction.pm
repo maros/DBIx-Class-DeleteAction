@@ -72,7 +72,7 @@ DBIx::Class::DeleteAction - Define delete triggers
     $actor->delete();    
  });
  # Deletes all related actorroles only if they don't have a production
- # Finally deletes the actor itself
+ # Finally deletes the actor itself (Always use transactions!!!)
  
  $schema->txn_do(sub {
     $actor_role->delete();    
@@ -181,11 +181,11 @@ This method overdrives the L<DBIx::Class::Row> delete method. You can
 add arbitrary data as HASHREF which will be passed to your custom
 delete handles. 
 
-Make sure that you ALWAYS call C<delete> always from within a TRANSACTION 
+Make sure that you ALWAYS call C<delete> always inside a TRANSACTION 
 block. 
 
-If you call C<delete> from within a custom delete handler always pass on
-the C<seen> parameter.
+If you call another C<delete> from within a custom delete handler always pass 
+on the C<seen> parameter.
 
 =cut
 
@@ -209,8 +209,7 @@ sub delete {
     my $debug = $self->result_source->storage->debug();
     
     my $identifier = $self->_delete_action_identifier;
-    
-    
+       
     # Check for identifier
     return if (grep { $identifier eq $_ } @{$params->{seen}});
     
@@ -245,7 +244,7 @@ sub delete {
         if ($relationship_info->{attrs}{accessor} eq 'multi') {
             $related = $self->search_related($relationship);
             next RELATIONSHIP
-                unless $related->count;
+                unless $related && $related->count;
         } else {
             CONDITIONS:
             foreach my $condition (values %{$relationship_info->{cond}}) {
@@ -253,7 +252,6 @@ sub delete {
                     my $column = $1;
                     next RELATIONSHIP
                         unless $self->get_column($column);
-#                    
 #                    unless ($self->has_column_loaded($column)) {
 #                        warn("LOAD $column");
 #                        $self = $self->get_from_storage();
@@ -262,7 +260,6 @@ sub delete {
 #                        last CONDITIONS;
 #                    }
                 }
-                
             }
 
             $related = $self->$relationship;
@@ -346,14 +343,61 @@ sub delete {
     return $self->next::method($params);
 }
 
+=head1 EXAMPLE
+
+=head2 Tree example
+
+This example shows a very simple tree schema, where each node points to its
+parent node. Once you delete an item from the tree, all child nodes will be
+appended to the parent node of the deleted node.
+
+ package MyApp::Treenode;
+ use strict;
+ use warnings;
+ 
+ use parent qw(DBIx::Class);
+ 
+ __PACKAGE__->load_components(
+   "+DBIx::Class::DeleteAction",
+   "PK",
+   "Core",
+ );
+ 
+ __PACKAGE__->table("treenode");
+ __PACKAGE__->add_columns(qw/id name parent/);
+ __PACKAGE__->set_primary_key("id");
+ 
+ # Do not delete parent node
+ __PACKAGE__->might_have(
+    'parent' => 'MyApp::Treenode',
+    { "foreign.id" => "self.parent" },
+    { delete_action => 'ignore' },
+ );
+ 
+ # Update all child nodes
+ __PACKAGE__->has_many(
+    'children' => 'MyApp::Treenode',
+    { "foreign.parent" => "self.id" },
+    { delete_action => sub {
+        my ($self,$params) = @_;
+        $params->{related}->update({
+            parent  => $self->get_column('parent'), 
+        });
+    } },
+ );
+
+=head2 Debugging
+
+Use C<DBIC_TRACE=1> or set C<__PACKAGE__->storage->debug(1);> to see what
+is exactly going on.
 
 =head1 CAVEATS
 
 Note that the C<delete> method in C<DBIx::Class::ResultSet> will not run 
 DeleteAction triggers. See C<delete_all> if you need triggers to run.
 
-Any database-level cascade, restrict or trigger will be performed AFTER a 
-DBIx-Class-DeleteAction based trigger.
+Any database-level cascade, restrict or trigger will be performed AFTER 
+DBIx-Class-DeleteAction based triggers.
 
 Always use transactions, or else you might end up with inconsistent data.
 
@@ -379,7 +423,7 @@ software company I run with Koki and Domm (L<http://search.cpan.org/~domm/>).
 
 =head1 COPYRIGHT
 
-DBIx::Class::DeleteAction is Copyright (c) 2008 Maroš Kollár 
+DBIx::Class::DeleteAction is Copyright (c) 2008-9 Maroš Kollár 
 - L<http://www.revdev.at>
 
 This program is free software; you can redistribute it and/or modify it under 
@@ -390,4 +434,4 @@ LICENSE file included with this module.
 
 =cut
 
-"Delete me NAAAT";
+"Delete me .... NAAAT";
