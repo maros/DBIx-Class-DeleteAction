@@ -20,5 +20,6 @@ build_requires  'Class::C3'             => 0;
 build_requires  'Test::Exception'       => 0;
 build_requires  'Test::Warn'            => 0;
 
+repository "git://github.com/maros/DBIx-Class-DeleteAction.git";
 
 WriteAll;
