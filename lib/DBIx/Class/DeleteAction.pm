@@ -114,13 +114,13 @@ Deny deletion if this record is being referenced from other rows.
 
 =item * CODE reference
 
-Executes the code referece on delete. The current C<DBIx::Class::Row> object 
+Executes the code referece on delete. The current L<DBIx::Class::Row> object 
 and the name of the relation are passed to the code reference.
 
 =item * STRING
 
 Execute a method with the given name. The method will be called on the current
-C<DBIx::Class::Row> object and will be passed the name of the relation.
+L<DBIx::Class::Row> object and will be passed the name of the relation.
 
 =item * ignore
 
@@ -393,7 +393,7 @@ is exactly going on.
 
 =head1 CAVEATS
 
-Note that the C<delete> method in C<DBIx::Class::ResultSet> will not run 
+Note that the C<delete> method in L<DBIx::Class::ResultSet> will not run 
 DeleteAction triggers. See C<delete_all> if you need triggers to run.
 
 Any database-level cascade, restrict or trigger will be performed AFTER 
@@ -404,7 +404,7 @@ Always use transactions, or else you might end up with inconsistent data.
 =head1 SUPPORT
 
 Please report any bugs or feature requests to 
-C<bug-dbix-class-deleteaction@rt.cpan.org>, or through the web interface at
+L<bug-dbix-class-deleteaction@rt.cpan.org>, or through the web interface at
 L<http://rt.cpan.org/Public/Bug/Report.html?Queue=DBIx::Class::DeleteAction>.
 I will be notified, and then you'll automatically be notified of progress on 
 your report as I make changes.
