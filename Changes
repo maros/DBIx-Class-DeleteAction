@@ -1,5 +1,11 @@
 Revision history for Perl module DBIx::Class::DeleteAction
 
+1.04 Tue Aug 11 2009
+    - Additional documentation
+    - Fix warning
+    - Add github repo to Makefile.PL/META.yml
+    - Make deleteactions on resultsets more efficient and secure
+
 1.03 Fri Dec 5 2008
     - Updated Manifest && Manifest skip
     - Fixed problems that occured after upgrade to DBIx-Class-0.08100
