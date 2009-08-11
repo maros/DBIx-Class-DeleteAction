@@ -8,7 +8,7 @@ use base qw(DBIx::Class);
 
 use version;
 use vars qw($VERSION);
-$VERSION = version->new("1.03");
+$VERSION = version->new("1.04");
 
 =encoding utf8
 
@@ -244,7 +244,7 @@ sub delete {
         if ($relationship_info->{attrs}{accessor} eq 'multi') {
             $related = $self->search_related($relationship);
             next RELATIONSHIP
-                unless $related && $related->count;
+                unless $related;
         } else {
             CONDITIONS:
             foreach my $condition (values %{$relationship_info->{cond}}) {
@@ -300,40 +300,47 @@ sub delete {
             } else {
                 warn("Delete action 'null' does not work with ".$relationship_info->{attrs}{accessor}." relations");
             }
-        # Action: DENY
-        } elsif ($delete_action eq 'deny') {
-            warn('DeleteAction: DENY '.$self.'->'.$relationship) if $debug;
-            if ($related->isa('DBIx::Class::ResultSet')) {
-                while (my $item = $related->next) {
-                    my $compare_identifier = $item->_delete_action_identifier;
-                    next if grep {$compare_identifier eq $_} @{$params->{seen}};
-                    $self->throw_exception("Can't delete the object because it is still referenced from other records");
-                }
-            } else {
-                my $compare_identifier = $related->_delete_action_identifier;
-                unless (grep {$compare_identifier eq $_} @{$params->{seen}}) {
-                    $self->throw_exception("Can't delete the object because it is still referenced from other records");
-                }
-            }
-        # Action: CODE
-        } elsif (ref $delete_action eq 'CODE') {
-            warn('DeleteAction: CODE '.$self.'->'.$relationship) if $debug;
-            $delete_action->($self,{
-                relationship    => $relationship,
-                related         => $related,
-                %{$params},
-            });
-        # Action: METHOD    
-        } elsif ($self->can($delete_action)) {
-            warn('DeleteAction: METHOD '.$self.'->'.$relationship.':'.$delete_action) if $debug;
-            $self->$delete_action({
-                relationship    => $relationship,
-                related         => $related,
-                %{$params},
-            });
-        # Fallback
         } else {
-            $self->throw_exception("Invalid delete action '$delete_action'")
+            if ($related->isa('DBIx::Class::ResultSet')
+                && $related->count == 0) {
+                next RELATIONSHIP;
+            }    
+            
+            # Action: DENY
+            if ($delete_action eq 'deny') {
+                warn('DeleteAction: DENY '.$self.'->'.$relationship) if $debug;
+                if ($related->isa('DBIx::Class::ResultSet')) {
+                    while (my $item = $related->next) {
+                        my $compare_identifier = $item->_delete_action_identifier;
+                        next if grep {$compare_identifier eq $_} @{$params->{seen}};
+                        $self->throw_exception("Can't delete the object because it is still referenced from other records");
+                    }
+                } else {
+                    my $compare_identifier = $related->_delete_action_identifier;
+                    unless (grep {$compare_identifier eq $_} @{$params->{seen}}) {
+                        $self->throw_exception("Can't delete the object because it is still referenced from other records");
+                    }
+                }
+            # Action: CODE
+            } elsif (ref $delete_action eq 'CODE') {
+                warn('DeleteAction: CODE '.$self.'->'.$relationship) if $debug;
+                $delete_action->($self,{
+                    relationship    => $relationship,
+                    related         => $related,
+                    %{$params},
+                });
+            # Action: METHOD    
+            } elsif ($self->can($delete_action)) {
+                warn('DeleteAction: METHOD '.$self.'->'.$relationship.':'.$delete_action) if $debug;
+                $self->$delete_action({
+                    relationship    => $relationship,
+                    related         => $related,
+                    %{$params},
+                });
+            # Fallback
+            } else {
+                $self->throw_exception("Invalid delete action '$delete_action'")
+            }
         }
     }
 
