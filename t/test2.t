@@ -93,9 +93,9 @@ is($schema->resultset('Test2A')->count,3);
 is($schema->resultset('Test2A')->search({b => \'IS NULL'})->count,2);
 
 throws_ok {
-    $schema->txn_do(sub {
+    #$schema->txn_do(sub {
         $b2->delete({extra => 'bunny'});
-    })
+    #})
 } qr/TESTME:bunny/, 'call method';
 
 warnings_like {
