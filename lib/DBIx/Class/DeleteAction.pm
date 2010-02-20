@@ -7,8 +7,8 @@ use warnings;
 use base qw(DBIx::Class);
 
 use version;
-use vars qw($VERSION);
-$VERSION = version->new("1.04");
+our $AUTHORITY = 'cpan:MAROS';
+our $VERSION = version->new("1.04");
 
 =encoding utf8
 
@@ -344,7 +344,7 @@ sub delete {
         }
     }
 
-    warn('DeleteAction: NEXT DELETE '.$self) if $debug;
+    warn('DeleteAction: FINISH '.$self) if $debug;
 
     # Run delete
     return $self->next::method($params);
