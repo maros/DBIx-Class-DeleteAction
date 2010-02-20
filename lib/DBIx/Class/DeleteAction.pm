@@ -8,7 +8,7 @@ use base qw(DBIx::Class);
 
 use version;
 our $AUTHORITY = 'cpan:MAROS';
-our $VERSION = version->new("1.04");
+our $VERSION = version->new("1.05");
 
 =encoding utf8
 

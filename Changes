@@ -1,5 +1,9 @@
 Revision history for Perl module DBIx::Class::DeleteAction
 
+1.05 Sun Feb 20 2010
+    - Fix test warnings with latest DBIx::Class version
+    - Fix failing test
+
 1.04 Tue Aug 11 2009
     - Additional documentation
     - Fix warning
