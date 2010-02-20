@@ -32,10 +32,11 @@ __PACKAGE__->has_many(
     }
 );
 
-__PACKAGE__->might_have(
+__PACKAGE__->belongs_to(
     'c' => 'DATest::Schema::Test2C', 
     { 'foreign.id'  => 'self.c' },
     { 
+        join_type       => 'left',
         delete_action   => 'testme',
     }
 );

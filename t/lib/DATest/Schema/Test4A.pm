@@ -24,10 +24,11 @@ __PACKAGE__->add_columns(
 );
 __PACKAGE__->set_primary_key('id');   
 
-__PACKAGE__->might_have(
+__PACKAGE__->belongs_to(
     'a' => 'DATest::Schema::Test4A', 
     { 'foreign.id'  => 'self.a' },
     { 
+        join_type       => 'left',
         delete_action   => 'bogus',
     }
 );
