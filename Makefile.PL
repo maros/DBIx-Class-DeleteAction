@@ -2,9 +2,13 @@
 use strict;
 use inc::Module::Install;
 
+my $from = 'lib/DBIx/Class/DeleteAction.pm';
+
 # Define metadata
 name            'DBIx-Class-DeleteAction';
-all_from        'lib/DBIx/Class/DeleteAction.pm';
+all_from        $from;
+readme_from     $from;
+readme_markdown_from $from;
 
 perl_version    '5.006';
 
@@ -21,5 +25,6 @@ build_requires  'Test::Exception'       => 0;
 build_requires  'Test::Warn'            => 0;
 
 repository "git://github.com/maros/DBIx-Class-DeleteAction.git";
+
 
 WriteAll;
